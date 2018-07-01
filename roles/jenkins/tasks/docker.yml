@@ -1,0 +1,43 @@
+
+- file: path=/var/jenkins/script state=directory recurse=yes
+
+- copy: src=docker-compose.yml dest=/var/jenkins/script/docker-compose.yml owner=root group=root mode=0755
+
+- name: install yum-utils
+  yum: name=yum-utils state=present
+
+- name: install docker
+  yum: name=docker-io state=present
+
+- name: check docker-compose exists
+  stat: path=/usr/local/bin/docker-compose
+  register: compose
+
+- name: capture os name
+  shell: uname -s
+  register: os_name
+  when: not compose.stat.exists
+
+- name: capture cpu arch
+  shell: uname -m
+  register: cpu_arch
+  when: not compose.stat.exists
+
+- name: download docker-compose
+  get_url:
+    url: https://github.com/docker/compose/releases/download/1.21.2/docker-compose-Linux-x86_64
+    dest: /usr/local/bin/docker-compose
+  when: not compose.stat.exists
+
+- name: change permission
+  file: path=/usr/local/bin/docker-compose state=touch mode="u+x,g+x,o+x"
+  when: not compose.stat.exists
+
+- group: name=docker state=present
+
+#- user: name={{ item }} groups=docker state=present
+#  with_items:
+#    - "{{ docker_groups }}"
+
+- name: start server
+  service: name=docker state=started
